@@ -1,0 +1,245 @@
+---
+title: "Bellabeat_CaseStudy"
+author: "Jung-Cheng Huang"
+date: "9/7/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+# About the company
+
+Bellabeat, a high-tech company that manufactures health-focused smart products. By collecting data on their users, they want to design more powerful technology that informs and inspires women around the world. Therefore, the company focus on analyzing previous product usage information in order to gain user insights and the marketing strategy. In the end, Bellabeat can become a potential player in the global smart device market. 
+
+## Phase 1: Ask
+
+1. Identify the business task:
+
+Find the trends or information from the usage of their fitness smart devices and app. Furthermore, give high-level recommendations which can inform Bellabeat marketing strategy in the future. 
+
+On the other hand, in one phrase it would be:
+What's the trend for the user when using our product?
+
+2.Consider key stakeholders:
+
+The main stakeholders here are Urška Sršen, Bellabeat’s co-founder and Chief Creative Officer; Sando Mur, Mathematician and Bellabeat’s cofounder; And the rest of the Bellabeat marketing analytics team.
+
+
+## Phase 2: Prepare
+
+1. The credibility of the data:
+
+The data set is from FitBit Fitness Tracker Data which contains personal fitness tracker from thirty fitbit users. Thirty eligible Fitbit users consented to the submission of personal tracker data, including minute-level output for physical activity, heart rate, and sleep monitoring. It includes information about daily activity, steps, and heart rate that can be used to explore users’ habits.
+
+2. Sort and filter the data:
+
+In order to find some useful insights, I need to focus on analyzing the group dataset and personal information. Furthermore, we might see what the relationship between Sleep quality and other variables is. In other words, it is great to approach different variables to understand the result of them. For instance, I am going to analyze each person's data and we can realize the key facts for great sleep quality. 
+
+```{r library}
+library(tidyverse)
+library(knitr)
+library(dplyr)
+library(ggplot2)
+```
+
+## Input the datasets
+```{r input the datasets}
+Daily_Activity <- read.csv("/Users/dodsonhuang/Desktop/20210904_Bellabeat_Case_Study/Data/Fitabase Data 4.12.16-5.12.16/dailyActivity_merged.csv")
+Daily_Calories <- read.csv("/Users/dodsonhuang/Desktop/20210904_Bellabeat_Case_Study/Data/Fitabase Data 4.12.16-5.12.16/dailyCalories_merged.csv")
+Daily_Intensities <- read.csv("/Users/dodsonhuang/Desktop/20210904_Bellabeat_Case_Study/Data/Fitabase Data 4.12.16-5.12.16/dailyIntensities_merged.csv")
+Daily_Sleep <- read.csv("/Users/dodsonhuang/Desktop/20210904_Bellabeat_Case_Study/Data/Fitabase Data 4.12.16-5.12.16/sleepDay_merged.csv")
+```
+
+## preview the datasets
+```{r preview the datasets}
+head(Daily_Activity)
+head(Daily_Calories)
+head(Daily_Intensities)
+head(Daily_Sleep)
+#kable(Daily_Activity[1:10,])
+```
+
+```{r summary the "Daily Activity" data set}
+# Get the summary for each data set
+
+# Daily Activity
+summary(Daily_Activity)
+```
+
+```{r summary the "Daily Sleep" data set}
+# Daily Sleep
+Daily_Sleep %>%
+  select(TotalSleepRecords,TotalMinutesAsleep,TotalTimeInBed) %>%
+  summary()
+```
+## Inner join the dataset
+```{r inner join the dataset}
+
+# Change the format in order to join the two tables(Daily_Activity and Daily_Sleep)
+
+# Daily_Activity
+
+Daily_Activity$ActivityDate=as.POSIXct(Daily_Activity$ActivityDate, format="%m/%d/%Y", tz=Sys.timezone())
+Daily_Activity$date <- format(Daily_Activity$ActivityDate, format = "%m/%d/%y")
+
+# Daily_Sleep
+
+Daily_Sleep$SleepDay=as.POSIXct(Daily_Sleep$SleepDay, format="%m/%d/%Y %I:%M:%S %p", tz=Sys.timezone())
+Daily_Sleep$date <- format(Daily_Sleep$SleepDay, format = "%m/%d/%y")
+
+# Merge the two tables by Id and date.
+Daily_Activity_with_Sleep <- merge(Daily_Activity, Daily_Sleep, by = c('Id','date'))
+
+# Review the new data set
+Daily_Activity_with_Sleep$Id <- as.factor(Daily_Activity_with_Sleep$Id)
+head(Daily_Activity_with_Sleep)
+summary(Daily_Activity_with_Sleep)
+```
+
+This merged data table combines the two datasets to help us analyze the information, thus we can choose several variables to approach it. For example, we might group the dataset by Id and we could see the interesting insights. 
+
+# Phase 3 & 4: Process and Analyse
+
+In this process, we will find the relationship for each variable such as Total Minutes Asleep vs. Calories. On the other hand, we might understand why someone has a high sleep time. Therefore, I will use the Plotly function in order to get the dimension plot for this approach. 
+
+Let's see some interesting patterns in the following graphs:
+
+## Graph: Total Minutes Asleep vs. Calories
+```{r}
+ggplot(data = Daily_Activity_with_Sleep, aes(x = Calories , y = TotalMinutesAsleep)) +
+  geom_point() + geom_smooth() + labs(title = "Total Minutes Asleep vs. Calories")+ theme_bw()
+```
+ANALYSIS:
+
+HINT: CDC Recommended Hours of Sleep Per Day for Adult(18–60 years)	is 7 or more hours per night.
+
+In the graph, we can see that Total Minutes Asleep and Calories might not have a positive or negative relationship. However, most data are central in average values. Therefore, we can ensure most people who spend 2400 calories could have 420 minutes of sleep per day. On the other side, spending 4000 calories per day would have higher sleep times. To conclude, Spend around 2400 calories can have great sleep quality. But it still depends on people's BMI or other facts.
+
+## Graph: Sedentary Minutes vs.Total Minutes A sleep
+```{r}
+ggplot(data=Daily_Activity_with_Sleep, aes(x=SedentaryMinutes, y=TotalMinutesAsleep)) + 
+geom_point(color='darkblue') + geom_smooth() +
+  labs(title="Sedentary Minutes vs.Total Minutes A sleep") + theme_bw()
+```
+ANALYSIS:
+
+The graph shows that these two variables have a positive relationship which means Sedentary Minutes would impact Total Minutes of sleep. In other words, we can conclude that people need to avoid being sedentary in order to have higher hours of sleep per day.Thus, the app could give a sedentary reminder for people who want to have a higher quality of sleep. Furthermore, providing the suggestion article or new functions in-app will be a great choice for retain the users and increase the number of new customers. 
+
+## Graph: Individual average of steps record
+```{r}
+Daily_Activity_with_Sleep_New <- Daily_Activity_with_Sleep %>%
+  group_by(Id) %>%
+  summarise(TotalSteps_Mean = mean(TotalSteps))%>%
+  arrange(desc(TotalSteps_Mean))
+
+ggplot(data = Daily_Activity_with_Sleep_New,
+       aes(x = Id,
+           y = TotalSteps_Mean,
+           )) + 
+  geom_histogram(stat = "identity", fill = "darkgreen") +
+  theme(axis.text.x = element_text(angle = 90)) 
+  
+```
+ANALYSIS:
+
+Most people walk more than 5000 steps per day, but the average total steps per day are close to 7700. Therefore, we might use the app coach to remind people who could walk more steps rather than spending too much time on sedentary. In addition, we can interview people who have the lowest steps and highest sties in order to understand the customer deep thoughts. 
+
+## Graph: Calories, Total Stpes, TotalMinutesAsleep,SedentaryMinutes
+
+```{r New DataSet for ggplot2 graph }
+# Group by people's Id.
+# Calculate the average of each variable.
+# Based on the CDC recommendation, I use 6 and 7 hours to determine one's sleep quality and put them into groups.
+Daily_Activity_with_Sleep_forGraph <- Daily_Activity_with_Sleep %>%
+  group_by(Id) %>%
+  summarise( TotalSteps = mean(TotalSteps),
+             Calories = mean(Calories),
+             TotalMinutesAsleep = mean(TotalMinutesAsleep),
+             SedentaryMinutes = mean(SedentaryMinutes)) %>%
+  mutate(TotalMinutesAsleep_Group = ifelse(TotalMinutesAsleep > 420, 'Top',
+                                    ifelse(TotalMinutesAsleep >= 360 
+                                           & TotalMinutesAsleep < 420, 'Normal', 'Bad'))) %>%
+  arrange(desc(TotalSteps))
+  
+head(Daily_Activity_with_Sleep_forGraph)
+```
+
+```{r plot the graph for 4 deminsions}
+ggplot(data = Daily_Activity_with_Sleep_forGraph,
+       aes( x = TotalSteps,
+            y = Calories,
+            color = TotalMinutesAsleep_Group)) +
+  geom_point(alpha = 0.8) +
+  geom_point(aes(size = SedentaryMinutes)) +
+  geom_text(aes( label =Id), vjust = -3, size = 2, color ='black') +
+  geom_vline( aes( xintercept = mean(TotalSteps))) +
+  geom_hline( aes( yintercept = mean(Calories))) +
+  labs( title = 'Calories, Total Stpes, Total Minutes A sleep and Sedentary Minutes', 
+        color = 'Sleep Quilty') +
+  theme_bw()
+```
+
+ANAYSIS: 
+
+As the graph, we can find some interesting patterns from these four variables:
+
+1. If people have a bigger size circle in the graph, they tend to be in the bad sleep quality group. In other words, people have higher sedentary minutes, the total sleep time would be lower than 6 hours. 
+
+2. For the outliers, we can see that the red circle in the top-right corner. It shows this person has higher data for each variable, but she still has bad sleep quality. 
+
+3. From the plot, calories could be not a great metric to determine one's sleep quality and we need to research more information for these parts.
+
+# Phase 5 : Share
+```{r dynamic plot}
+library(plotly)
+
+DynamicPlot <- ggplot( data = Daily_Activity_with_Sleep_forGraph,
+                       aes( x = TotalSteps,
+                            y = Calories,
+                            color = TotalMinutesAsleep_Group)) +
+  geom_point( alpha = 0.8 ) +
+  geom_point( aes( size = SedentaryMinutes )) +
+  geom_text( aes( label = Id ), vjust = -3, size = 2, color ='black') +
+  geom_vline( aes( xintercept = mean(TotalSteps))) +
+  geom_hline( aes( yintercept = mean(Calories))) +
+  
+  labs( title = 'Calories, Total Stpes, Total Minutes A sleep and Sedentary Minutes', 
+        color = 'Sleep Quilty') +
+  theme_bw()
+
+
+ggplotly(DynamicPlot)
+
+```
+
+# Key objectives:
+## Conclusions
+
+We get some useful findings:
+
+As we mention before, we want to test the relationship between each variable and personal information.  In order to find the relation and pattern, we combine the four variables into a dynamic graph. Furthermore, we could conclude three final insights and provide some marketing strategies.  
+
+1. Most people walk more than 5000 steps per day, but the average total steps per day are close to 7700. Therefore, we might use the app coach to remind people who could walk more steps rather than spending too much time on sedentary.
+
+2. In this dataset, We can ensure most people who spend 2400 calories could have 420 minutes of sleep per day. However, calories could be not a great metric to determine one's sleep quality and we need to research more information for these parts.
+
+3. People need to avoid being sedentary in order to have higher hours of sleep per day. In other words, people have higher sedentary minutes, the total sleep time would be lower than 6 hours. 
+
+
+# Ideas for the Bellabeat app
+
+1. Creating the sedentary reminder function for people who want to have higher sleep quality.
+
+2. Adding the new online course or app coach function is a great approach to a new market. To illustrate, most people nowadays prefer to do exercise at home due to pandemics. Therefore, a home gym is a trend in the future and we can find some coach to cooperate for the different kinds of courses for women. 
+
+3. Bellabeat membership can provide free courses for our subscribers to retain the user and attracting new customers by providing free-trails sessions. 
+
+
+
+
+
+
+
+
+
+
